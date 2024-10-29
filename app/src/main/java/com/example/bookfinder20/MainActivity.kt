@@ -1,5 +1,6 @@
 package com.example.bookfinder20
 
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,6 +24,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
@@ -135,6 +137,27 @@ fun BookItemView(book: Item, imageRequest: ImageRequest, onBookClick: (Item) -> 
 
 @Composable
 fun BookDetailScreen(book: Item, onBack: () -> Unit) {
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val imageUrl = book.volumeInfo.imageLinks?.thumbnail ?: ""
+    val secureImageUrl = imageUrl.replace("http://", "https://")
+
+    val imageRequest = ImageRequest.Builder(LocalContext.current)
+        .data(secureImageUrl)
+        .crossfade(true) // Smooth transition for loading images
+        .build()
+
+    // Determine the base layout structure based on orientation
+    if (isLandscape) {
+        LandscapeBookDetailLayout(book, imageRequest, onBack)
+    } else {
+        PortraitBookDetailLayout(book, imageRequest, onBack)
+    }
+}
+
+@Composable
+fun PortraitBookDetailLayout(book: Item, imageRequest: ImageRequest, onBack: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -144,14 +167,6 @@ fun BookDetailScreen(book: Item, onBack: () -> Unit) {
         Button(onClick = onBack, modifier = Modifier.padding(bottom = 16.dp)) {
             Text("Back")
         }
-
-        val imageUrl = book.volumeInfo.imageLinks?.thumbnail ?: ""
-        val secureImageUrl = imageUrl.replace("http://", "https://")
-
-        val imageRequest = ImageRequest.Builder(LocalContext.current)
-            .data(secureImageUrl)
-            .crossfade(true) // Smooth transition for loading images
-            .build()
 
         // centered book cover
         AsyncImage(
@@ -193,6 +208,68 @@ fun BookDetailScreen(book: Item, onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
+        }
+    }
+}
+
+@Composable
+fun LandscapeBookDetailLayout(book: Item, imageRequest: ImageRequest, onBack: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+        ) {
+            // Back Button at the top
+            Button(onClick = onBack, modifier = Modifier.padding(bottom = 16.dp)) {
+                Text("Back")
+            }
+
+            // centered book cover
+            AsyncImage(
+                model = imageRequest,
+                contentDescription = book.volumeInfo.title,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .size(100.dp),
+                alignment = Alignment.Center,
+            )
+
+            // Book Title
+            Text(
+                text = book.volumeInfo.title,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            // Authors
+            Text(
+                text = "Author(s): ${book.volumeInfo.authors?.joinToString(", ") ?: "Not Listed"}",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            // Publication Date
+            book.volumeInfo.publishedDate?.let { date ->
+                Text(
+                    text = "Published Date: $date",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+        }
+        Column {
+            // Description
+            book.volumeInfo.description?.let { description ->
+                Text(
+                    text = "Book Description: $description",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
         }
     }
 }
